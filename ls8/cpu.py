@@ -6,6 +6,8 @@ LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
 
 
 class CPU:
@@ -122,6 +124,16 @@ class CPU:
                 self.pc += 3
             elif instruction == HLT:
                 sys.exit(0)
+            elif instruction == PUSH:
+                value = self.reg[operand_a]
+                self.reg[7] -= 1
+                self.ram_write(value, self.reg[7])
+                self.pc += 2
+            elif instruction == POP:
+                self.reg[operand_a] = self.ram_read(self.reg[7])
+                value = self.reg[operand_a]
+                self.reg[7] += 1
+                self.pc += 2
             else:
                 print("Unknown instruction")
                 sys.exit(1)
