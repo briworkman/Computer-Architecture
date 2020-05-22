@@ -1,13 +1,4 @@
-"""CPU functionality."""
-
 import sys
-
-LDI = 0b10000010
-PRN = 0b01000111
-HLT = 0b00000001
-MUL = 0b10100010
-PUSH = 0b01000101
-POP = 0b01000110
 
 
 class CPU:
@@ -15,29 +6,55 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        # * Program Counter
         self.pc = 0
-        # * Memory storage for ram
         self.ram = [0] * 256
-        # * 8 new registers
         self.reg = [0] * 8
+        self.SP = 7
+        self.fl = 5
+        self.reg[self.SP] = 0xF4
+        self.instruction = {
+            0b00000001: self.HLT,
+            0b10000010: self.LDI,
+            0b01000111: self.PRN,
+            0b10100010: self.MUL,
+            0b01000101: self.push,
+            0b01000110: self.pop,
+            0b10100000: self.add,
+            0b01010000: self.call,
+            0b00010001: self.ret
+        }
+
+    def HLT(self, op1, op2):
+        return (0, False)
+
+    def LDI(self, op1, op2):
+        self.reg[op1] = op2
+        return (3, True)
+
+    def PRN(self, op1, op2):
+        print(self.reg[op1])
+        return (2, True)
+
+    def MUL(self, op1, op2):
+        self.alu("MUL", op1, op2)
+        return (3, True)
+
+    def add(self, op1, op2):
+        self.alu('ADD', op1, op2)
+        return (3, True)
+
+    def call(self, op1, op2):
+        self.SP -= 1
+        self.ram[self.SP] = self.pc + 2
+        self.pc = self.reg[op1]
+        return (0, True)
+
+    def ret(self, op1, op2):
+        self.pc = self.ram[self.SP]
+        return (0, True)
 
     def load(self, program):
         """Load a program into memory."""
-
-        address = 0
-
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     LDI,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     PRN,  # PRN R0
-        #     0b00000000,
-        #     HLT,  # HLT
-        # ]
 
         try:
             address = 0
@@ -70,8 +87,9 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        elif op == MUL:
-            self.reg[reg_a] *= self.reg[reg_b]
+        # elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] = (self.reg[reg_a] * self.reg[reg_b])
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -95,45 +113,37 @@ class CPU:
 
         print()
 
-    # * mar = memory address register
-    # * mdr = memory data register
-
     def ram_read(self, mar):
         return self.ram[mar]
 
     def ram_write(self, mdr, mar):
         self.ram[mar] = mdr
 
+    def push(self, op1, op2):
+        self.reg[self.SP] -= 1
+        self.ram[self.reg[self.SP]] = self.reg[op1]
+        return (2, True)
+
+    def pop(self, op1, op2):
+        self.reg[op1] = self.ram[self.reg[self.SP]]
+        self.reg[self.SP] += 1
+        return (2, True)
+
     def run(self):
         """Run the CPU."""
-        halt = False
+        running = True
 
-        while not halt:
+        while running:
             instruction = self.ram[self.pc]
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
 
-            if instruction == LDI:
-                self.reg[operand_a] = operand_b
-                self.pc += 3
-            elif instruction == PRN:
-                print(self.reg[operand_a])
-                self.pc += 2
-            elif instruction == MUL:
-                self.alu(instruction, operand_a, operand_b)
-                self.pc += 3
-            elif instruction == HLT:
-                sys.exit(0)
-            elif instruction == PUSH:
-                value = self.reg[operand_a]
-                self.reg[7] -= 1
-                self.ram_write(value, self.reg[7])
-                self.pc += 2
-            elif instruction == POP:
-                self.reg[operand_a] = self.ram_read(self.reg[7])
-                value = self.reg[operand_a]
-                self.reg[7] += 1
-                self.pc += 2
-            else:
+            op1 = self.ram_read(self.pc + 1)
+            op2 = self.ram_read(self.pc + 2)
+
+            try:
+                opo = self.instruction[instruction](op1, op2)
+                running = opo[1]
+                self.pc += opo[0]
+
+            except:
                 print("Unknown instruction")
                 sys.exit(1)
