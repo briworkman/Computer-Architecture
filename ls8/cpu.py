@@ -28,7 +28,8 @@ class CPU:
             0b10100111: self.CMP,
             0b01010100: self.JMP,
             0b01010101: self.JEQ,
-            0b01010110: self.JNE
+            0b01010110: self.JNE,
+            0b00010001: self.ret
         }
 
     def HLT(self, op1, op2):
